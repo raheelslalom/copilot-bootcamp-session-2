@@ -179,7 +179,7 @@ describe('Integration — TODO API', () => {
 
       const res = await request(app).delete('/api/items/completed');
       expect(res.status).toBe(200);
-      expect(res.body.count).toBeGreaterThanOrEqual(2);
+      expect(res.body.count).toBe(2);
 
       const getRes = await request(app).get('/api/items');
       expect(getRes.body.find((t) => t.id === task1.id)).toBeUndefined();

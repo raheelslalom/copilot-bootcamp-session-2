@@ -49,6 +49,11 @@ describe('API Endpoints', () => {
       expect(response.body).toHaveProperty('id');
       expect(response.body.name).toBe(newItem.name);
       expect(response.body).toHaveProperty('created_at');
+      expect(response.body.completed).toBe(0);
+      expect(response.body.priority).toBe('Medium');
+
+      // Cleanup
+      await request(app).delete(`/api/items/${response.body.id}`);
     });
 
     it('should return 400 if name is missing', async () => {

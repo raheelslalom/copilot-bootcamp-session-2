@@ -5,8 +5,28 @@ const { TodoPage } = require('./pages/TodoPage');
 const PREFIX = `[E2E-${Date.now()}]`;
 const taskName = (label) => `${PREFIX} ${label}`;
 
+// Helper: delete all tasks whose name starts with a given prefix via the API
+const deleteTasksWithPrefix = async (request, prefix) => {
+  const res = await request.get('/api/items');
+  if (!res.ok()) return;
+  const tasks = await res.json();
+  for (const task of tasks.filter((t) => t.name.startsWith(prefix))) {
+    await request.delete(`/api/items/${task.id}`);
+  }
+};
+
 test.describe('TODO App — critical user journeys', () => {
   let todoPage;
+
+  // Remove any leftover E2E tasks from previous failed runs before the suite starts
+  test.beforeAll(async ({ request }) => {
+    await deleteTasksWithPrefix(request, '[E2E-');
+  });
+
+  // Safety net: clean up this run's tasks after the suite finishes
+  test.afterAll(async ({ request }) => {
+    await deleteTasksWithPrefix(request, PREFIX);
+  });
 
   test.beforeEach(async ({ page }) => {
     todoPage = new TodoPage(page);
@@ -40,7 +60,10 @@ test.describe('TODO App — critical user journeys', () => {
     await todoPage.addTask(name);
 
     const checkbox = todoPage.getCheckbox(name);
-    await checkbox.check();
+    // Use .click() instead of .check() — React-controlled MUI checkboxes process
+    // state asynchronously via API; .check() fails because it verifies native state
+    // immediately before React can re-render. .click() + polling assertion is correct.
+    await checkbox.click();
     await expect(checkbox).toBeChecked();
 
     // Task name should have line-through style applied (card has opacity 0.6 when completed)
@@ -73,7 +96,8 @@ test.describe('TODO App — critical user journeys', () => {
     const completedName = taskName('Completed Task');
     await todoPage.addTask(activeName);
     await todoPage.addTask(completedName);
-    await todoPage.getCheckbox(completedName).check();
+    await todoPage.getCheckbox(completedName).click();
+    await expect(todoPage.getCheckbox(completedName)).toBeChecked();
 
     // Filter: Active
     await todoPage.filterActive.click();
@@ -102,8 +126,10 @@ test.describe('TODO App — critical user journeys', () => {
     await todoPage.addTask(done2);
     await todoPage.addTask(active);
 
-    await todoPage.getCheckbox(done1).check();
-    await todoPage.getCheckbox(done2).check();
+    await todoPage.getCheckbox(done1).click();
+    await expect(todoPage.getCheckbox(done1)).toBeChecked();
+    await todoPage.getCheckbox(done2).click();
+    await expect(todoPage.getCheckbox(done2)).toBeChecked();
 
     await expect(todoPage.clearCompletedButton).toBeVisible();
     await todoPage.clearCompletedButton.click();

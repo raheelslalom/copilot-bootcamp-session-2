@@ -49,6 +49,11 @@ const server = setupServer(
     );
   }),
 
+  // Must be before the parameterised /api/items/:id handler so MSW matches it first
+  rest.delete('/api/items/completed', (req, res, ctx) => {
+    return res(ctx.status(200), ctx.json({ message: 'Completed items deleted', count: 1 }));
+  }),
+
   rest.delete('/api/items/:id', (req, res, ctx) => {
     return res(ctx.status(200), ctx.json({ message: 'Item deleted successfully', id: Number(req.params.id) }));
   }),
@@ -58,10 +63,6 @@ const server = setupServer(
     if (!task) return res(ctx.status(404), ctx.json({ error: 'Item not found' }));
     return res(ctx.status(200), ctx.json({ ...task, completed: task.completed ? 0 : 1 }));
   }),
-
-  rest.delete('/api/items/completed', (req, res, ctx) => {
-    return res(ctx.status(200), ctx.json({ message: 'Completed items deleted', count: 1 }));
-  })
 );
 
 beforeAll(() => server.listen());

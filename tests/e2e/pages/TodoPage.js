@@ -16,7 +16,7 @@ class TodoPage {
     this.taskNameInput = page.getByLabel(/task name/i);
     this.dueDateInput = page.getByLabel(/due date/i);
     this.prioritySelect = page.getByLabel(/^priority$/i).first();
-    this.addTaskButton = page.getByRole('button', { name: /add task/i });
+    this.addTaskButton = page.getByRole('button', { name: 'Add Task', exact: true });
 
     // Toolbar
     this.filterAll = page.getByRole('button', { name: /^all$/i });
@@ -44,15 +44,16 @@ class TodoPage {
   }
 
   getTaskCard(name) {
-    return this.page.getByRole('listitem').filter({ hasText: name });
+    // The MuiCard element (not the outer <li> wrapper) carries the opacity and styling
+    return this.page.getByRole('listitem').filter({ hasText: name }).locator('.MuiCard-root');
   }
 
   getDeleteButton(name) {
-    return this.getTaskCard(name).getByRole('button', { name: new RegExp(`delete task ${name}`, 'i') });
+    return this.getTaskCard(name).getByRole('button', { name: `delete task ${name}` });
   }
 
   getEditButton(name) {
-    return this.getTaskCard(name).getByRole('button', { name: new RegExp(`edit task ${name}`, 'i') });
+    return this.getTaskCard(name).getByRole('button', { name: `edit task ${name}` });
   }
 
   getCheckbox(name) {
@@ -73,7 +74,7 @@ class TodoPage {
 
   async deleteAllTasksNamedWith(namePattern) {
     const deleteButtons = this.page.getByRole('button', {
-      name: new RegExp(`delete task ${namePattern}`, 'i'),
+      name: `delete task ${namePattern}`,
     });
     const count = await deleteButtons.count();
     for (let i = 0; i < count; i++) {
