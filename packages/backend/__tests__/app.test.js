@@ -99,4 +99,117 @@ describe('API Endpoints', () => {
       expect(response.body).toHaveProperty('error', 'Valid item ID is required');
     });
   });
+
+  describe('PUT /api/items/:id', () => {
+    let item;
+
+    beforeEach(async () => {
+      item = await createItem('Original Name');
+    });
+
+    afterEach(async () => {
+      await request(app).delete(`/api/items/${item.id}`);
+    });
+
+    it('should update the item name', async () => {
+      const response = await request(app)
+        .put(`/api/items/${item.id}`)
+        .send({ name: 'Updated Name' })
+        .set('Accept', 'application/json');
+
+      expect(response.status).toBe(200);
+      expect(response.body.name).toBe('Updated Name');
+    });
+
+    it('should update priority and due date', async () => {
+      const response = await request(app)
+        .put(`/api/items/${item.id}`)
+        .send({ priority: 'High', due_date: '2030-12-31' })
+        .set('Accept', 'application/json');
+
+      expect(response.status).toBe(200);
+      expect(response.body.priority).toBe('High');
+      expect(response.body.due_date).toBe('2030-12-31');
+    });
+
+    it('should return 404 for a non-existent item', async () => {
+      const response = await request(app)
+        .put('/api/items/999999')
+        .send({ name: 'Ghost' })
+        .set('Accept', 'application/json');
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('error', 'Item not found');
+    });
+
+    it('should return 400 if priority is invalid', async () => {
+      const response = await request(app)
+        .put(`/api/items/${item.id}`)
+        .send({ priority: 'Urgent' })
+        .set('Accept', 'application/json');
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('error', 'Priority must be High, Medium, or Low');
+    });
+  });
+
+  describe('PATCH /api/items/:id/complete', () => {
+    let item;
+
+    beforeEach(async () => {
+      item = await createItem('Task to Toggle');
+    });
+
+    afterEach(async () => {
+      await request(app).delete(`/api/items/${item.id}`);
+    });
+
+    it('should mark an incomplete task as complete', async () => {
+      const response = await request(app).patch(`/api/items/${item.id}/complete`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.completed).toBe(1);
+    });
+
+    it('should toggle a completed task back to incomplete', async () => {
+      await request(app).patch(`/api/items/${item.id}/complete`);
+      const response = await request(app).patch(`/api/items/${item.id}/complete`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.completed).toBe(0);
+    });
+
+    it('should return 404 for a non-existent item', async () => {
+      const response = await request(app).patch('/api/items/999999/complete');
+
+      expect(response.status).toBe(404);
+      expect(response.body).toHaveProperty('error', 'Item not found');
+    });
+  });
+
+  describe('DELETE /api/items/completed', () => {
+    it('should delete all completed items', async () => {
+      const item1 = await createItem('Completed Task A');
+      const item2 = await createItem('Completed Task B');
+      const item3 = await createItem('Active Task');
+
+      await request(app).patch(`/api/items/${item1.id}/complete`);
+      await request(app).patch(`/api/items/${item2.id}/complete`);
+
+      const response = await request(app).delete('/api/items/completed');
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('count', 2);
+
+      // Active task should remain
+      const remaining = await request(app).get('/api/items');
+      const ids = remaining.body.map((t) => t.id);
+      expect(ids).not.toContain(item1.id);
+      expect(ids).not.toContain(item2.id);
+      expect(ids).toContain(item3.id);
+
+      // Cleanup
+      await request(app).delete(`/api/items/${item3.id}`);
+    });
+  });
 });
